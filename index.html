@@ -1,1 +1,2114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>2v2 Indoor Volleyball</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #1a202c; /* Dark border surrounding the gym */
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
 
+        #canvas-container {
+            position: relative;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-grow: 1;
+        }
+
+        #gameCanvas {
+            background-color: #e2e8f0; /* Default wall color fallback */
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            border-radius: 12px;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            touch-action: none;
+        }
+
+        #ui-container {
+            position: absolute;
+            top: 15px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 5%;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .score-board {
+            background-color: rgba(255, 255, 255, 0.95);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        #message-box {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(255, 255, 255, 0.98);
+            padding: 24px 32px;
+            border-radius: 16px;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+            display: none;
+            z-index: 20;
+            width: 90%;
+            max-width: 400px;
+        }
+
+        #touch-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 5%;
+            pointer-events: none;
+            z-index: 15;
+        }
+
+        .touch-group {
+            display: flex;
+            gap: 15px;
+            pointer-events: auto;
+        }
+
+        .touch-btn {
+            width: 65px;
+            height: 65px;
+            background: rgba(255, 255, 255, 0.85);
+            border: 2px solid rgba(0, 0, 0, 0.15);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 26px;
+            font-weight: bold;
+            color: #2d3748;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            touch-action: none;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .touch-btn:active {
+            background: #cbd5e0;
+            transform: scale(0.92);
+        }
+
+        .touch-btn-action {
+            background: rgba(66, 153, 225, 0.9);
+            color: white;
+        }
+
+        .touch-btn-action:active {
+            background: #3182ce;
+        }
+
+        #joystick-base {
+            width: 140px;
+            height: 65px;
+            background: rgba(255, 255, 255, 0.85);
+            border: 2px solid rgba(0, 0, 0, 0.15);
+            border-radius: 35px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            touch-action: none;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            pointer-events: auto;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        #joystick-knob {
+            width: 55px;
+            height: 55px;
+            background: rgba(66, 153, 225, 0.9);
+            border-radius: 50%;
+            position: absolute;
+            left: calc(50% - 27.5px);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+            pointer-events: none;
+            transition: left 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+        }
+        
+        #joystick-base.joystick-active #joystick-knob {
+            transition: none;
+            background: #3182ce;
+        }
+
+        #message-title { font-size: 28px; font-weight: bold; margin-bottom: 8px; color: #1a202c; }
+        #message-text { font-size: 16px; color: #4a5568; margin-bottom: 16px; }
+
+        #pause-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+        }
+
+        #pause-menu {
+            background-color: rgba(255, 255, 255, 0.98);
+            padding: 24px 32px;
+            border-radius: 16px;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+            width: 90%;
+            max-width: 320px;
+        }
+
+        button {
+            background-color: #4299e1;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            pointer-events: auto;
+        }
+
+        button:hover { background-color: #3182ce; }
+        
+        #controls-info {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(255, 255, 255, 0.85);
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 12px;
+            display: flex;
+            gap: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 5;
+        }
+
+        .key-row { display: flex; justify-content: center; gap: 2px; margin-top: 2px; }
+        .key {
+            background: #eee;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-family: monospace;
+            font-size: 10px;
+        }
+
+        @media (max-width: 768px) { #controls-info { display: none; } }
+    </style>
+</head>
+<body>
+    <div id="ui-container">
+        <div class="score-board text-blue-600" id="score-left">Left: 0</div>
+        <button id="pause-btn" class="bg-gray-100 hover:bg-gray-200 text-gray-800 border-2 border-gray-300 px-4 py-2 rounded-lg font-bold shadow-md pointer-events-auto">❚❚ Pause</button>
+        <div class="score-board text-red-600" id="score-right">Right: 0</div>
+    </div>
+
+    <div id="canvas-container">
+        <!-- Court is wider (1800) -->
+        <canvas id="gameCanvas" width="1800" height="800"></canvas>
+        
+        <!-- Mobile Touch Controls -->
+        <div id="touch-controls">
+            <div class="touch-group" style="align-items: center;">
+                <div id="joystick-base">
+                    <div id="joystick-knob"></div>
+                </div>
+            </div>
+            <div class="touch-group">
+                <div class="touch-btn touch-btn-action" id="btn-down">⤓</div>
+                <div class="touch-btn touch-btn-action" id="btn-jump">▲</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="message-box">
+        <div id="message-title">Indoor Volleyball</div>
+        <div id="message-text">Select Game Mode</div>
+        
+        <div class="flex justify-center gap-2 mb-4 flex-wrap">
+            <button id="mode-1p" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-sm font-semibold">1 Player vs AI</button>
+            <button id="mode-2p" class="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1.5 rounded text-sm font-semibold">2 Player Local</button>
+            <button id="mode-practice" class="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1.5 rounded text-sm font-semibold">Serve Practice</button>
+        </div>
+
+        <div class="mb-4 text-center">
+            <label for="score-limit" class="text-sm font-bold text-gray-700 mr-2">Play to:</label>
+            <select id="score-limit" class="bg-gray-100 border-2 border-gray-300 rounded px-2 py-1 text-sm font-bold outline-none cursor-pointer">
+                <option value="5">5</option>
+                <option value="11">11</option>
+                <option value="15" selected>15</option>
+                <option value="21">21</option>
+                <option value="25">25</option>
+            </select>
+        </div>
+
+        <div id="character-select" class="mb-4 text-left w-full bg-gray-50 p-3 rounded-lg border border-gray-200">
+            <div class="text-center font-bold text-gray-700 mb-2 text-sm border-b pb-1">Team Setup</div>
+            <div class="flex gap-3 mb-2">
+                <div class="w-1/2">
+                    <label class="block text-xs font-bold text-blue-800 mb-1">Your Hitter (P1):</label>
+                    <select id="select-hitter" class="w-full bg-white border border-gray-300 rounded px-1 py-1.5 text-xs outline-none cursor-pointer shadow-sm"></select>
+                </div>
+                <div class="w-1/2">
+                    <label class="block text-xs font-bold text-blue-800 mb-1">Your Setter (P2):</label>
+                    <select id="select-setter" class="w-full bg-white border border-gray-300 rounded px-1 py-1.5 text-xs outline-none cursor-pointer shadow-sm"></select>
+                </div>
+            </div>
+            <div class="text-xs text-gray-500 text-center italic mt-2">* Opponents are randomized. Win to unlock them!</div>
+        </div>
+
+        <button id="action-btn" class="w-full">Start Game</button>
+    </div>
+
+    <div id="pause-overlay">
+        <div id="pause-menu">
+            <div id="message-title" class="mb-4">Game Paused</div>
+            <button id="resume-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white mb-3 py-2 rounded-lg font-semibold">Resume Game</button>
+            <button id="quit-btn" class="w-full bg-red-500 hover:bg-red-600 text-white py-2 rounded-lg font-semibold">Quit to Menu</button>
+        </div>
+    </div>
+
+    <div id="controls-info">
+        <div class="team-controls text-blue-800">
+            <strong>Left Team (Blue)</strong>
+            <div class="flex gap-4 mt-2">
+                <div class="flex flex-col items-center">
+                    <span class="text-xs mb-1">P1 (Hitter)</span>
+                    <div class="key-row"><span class="key">W</span></div>
+                    <div class="key-row"><span class="key">A</span><span class="key">S</span><span class="key">D</span></div>
+                </div>
+                <div class="flex flex-col items-center">
+                    <span class="text-xs mb-1">P2 (Setter)</span>
+                    <div class="key-row"><span class="key">T</span></div>
+                    <div class="key-row"><span class="key">F</span><span class="key">G</span><span class="key">H</span></div>
+                </div>
+            </div>
+        </div>
+        <div class="border-l border-gray-400 mx-2"></div>
+        <div class="team-controls text-red-800">
+            <strong>Right Team (Red)</strong>
+            <div class="flex gap-4 mt-2">
+                <div class="flex flex-col items-center">
+                    <span class="text-xs mb-1">P1 (Hitter)</span>
+                    <div class="key-row"><span class="key">↑</span></div>
+                    <div class="key-row"><span class="key">←</span><span class="key">↓</span><span class="key">→</span></div>
+                </div>
+                <div class="flex flex-col items-center">
+                    <span class="text-xs mb-1">P2 (Setter)</span>
+                    <div class="key-row"><span class="key">I</span></div>
+                    <div class="key-row"><span class="key">J</span><span class="key">K</span><span class="key">L</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreLeftEl = document.getElementById('score-left');
+        const scoreRightEl = document.getElementById('score-right');
+        const msgBox = document.getElementById('message-box');
+        const msgTitle = document.getElementById('message-title');
+        const msgText = document.getElementById('message-text');
+        const actionBtn = document.getElementById('action-btn');
+
+        const pauseBtn = document.getElementById('pause-btn');
+        const pauseOverlay = document.getElementById('pause-overlay');
+        const resumeBtn = document.getElementById('resume-btn');
+        const quitBtn = document.getElementById('quit-btn');
+        
+        let isPaused = false;
+
+        const mode1pBtn = document.getElementById('mode-1p');
+        const mode2pBtn = document.getElementById('mode-2p');
+        const modePracticeBtn = document.getElementById('mode-practice');
+
+        // Game Constants
+        const GRAVITY = 0.4;
+        const GROUND_Y = 650; 
+        const NET_X = canvas.width / 2;
+        const NET_HEIGHT = 200;
+        const NET_WIDTH = 12;
+        
+        let WIN_SCORE = 15;
+        let matchWinner = null;
+        let matchEndTimer = 0;
+        
+        const CHARACTERS = {
+            hitters: {
+                'h_basic': { name: 'Rookie', color: '#2b6cb0', speed: 13, jump: -15, power: 1.0, accuracy: 1.0, scale: 1.0 },
+                'h_titan': { name: 'Titan', color: '#822727', speed: 11, jump: -13.5, power: 1.5, accuracy: 0.8, scale: 1.15 },
+                'h_flash': { name: 'Flash', color: '#d69e2e', speed: 16.5, jump: -14.5, power: 0.85, accuracy: 1.0, scale: 0.9 },
+                'h_sky': { name: 'Sky', color: '#3182ce', speed: 12, jump: -18, power: 1.1, accuracy: 0.9, scale: 0.95 },
+                'h_sniper': { name: 'Sniper', color: '#38a169', speed: 12.5, jump: -15, power: 1.0, accuracy: 1.8, scale: 1.0 },
+                'h_legend': { name: 'Legend', color: '#6b46c1', speed: 14.5, jump: -16.5, power: 1.3, accuracy: 1.3, scale: 1.05 }
+            },
+            setters: {
+                's_basic': { name: 'Rookie', color: '#4299e1', speed: 13, jump: -15, power: 1.0, accuracy: 1.0, scale: 1.0 },
+                's_dash': { name: 'Dash', color: '#ed8936', speed: 16, jump: -14, power: 0.9, accuracy: 1.0, scale: 0.9 },
+                's_wall': { name: 'Wall', color: '#718096', speed: 10.5, jump: -13.5, power: 1.2, accuracy: 0.9, scale: 1.2 },
+                's_brain': { name: 'Brain', color: '#48bb78', speed: 12, jump: -15, power: 0.8, accuracy: 2.0, scale: 0.95 },
+                's_save': { name: 'Save', color: '#f56565', speed: 14.5, jump: -14, power: 0.9, accuracy: 1.1, scale: 0.95 },
+                's_maestro': { name: 'Maestro', color: '#9f7aea', speed: 13.5, jump: -15.5, power: 1.1, accuracy: 1.5, scale: 1.05 }
+            }
+        };
+
+        let unlockedChars = ['h_basic', 's_basic'];
+        try {
+            const saved = localStorage.getItem('vb_unlocked');
+            if (saved) unlockedChars = JSON.parse(saved);
+        } catch (e) { console.warn("Local storage access denied"); }
+
+        function saveUnlock(id) {
+            if (!unlockedChars.includes(id)) {
+                unlockedChars.push(id);
+                try {
+                    localStorage.setItem('vb_unlocked', JSON.stringify(unlockedChars));
+                } catch(e) {}
+                return true;
+            }
+            return false;
+        }
+
+        function populateCharSelects() {
+            const hSelect = document.getElementById('select-hitter');
+            const sSelect = document.getElementById('select-setter');
+            if(!hSelect || !sSelect) return;
+            hSelect.innerHTML = ''; sSelect.innerHTML = '';
+
+            Object.keys(CHARACTERS.hitters).forEach(id => {
+                if (unlockedChars.includes(id)) {
+                    let opt = document.createElement('option');
+                    opt.value = id;
+                    opt.text = CHARACTERS.hitters[id].name;
+                    hSelect.appendChild(opt);
+                }
+            });
+            Object.keys(CHARACTERS.setters).forEach(id => {
+                if (unlockedChars.includes(id)) {
+                    let opt = document.createElement('option');
+                    opt.value = id;
+                    opt.text = CHARACTERS.setters[id].name;
+                    sSelect.appendChild(opt);
+                }
+            });
+        }
+        
+        let recentlyUnlocked = [];
+
+        // Serve lines
+        const LEFT_SERVE_LINE = 150;
+        const RIGHT_SERVE_LINE = canvas.width - 150;
+
+        let gameState = 'START'; // START, SERVING, SERVING_TOSSED, PLAYING, POINT_OVER, MATCH_OVER, GAME_OVER
+        let gameMode = '1P'; 
+        let scoreLeft = 0;
+        let scoreRight = 0;
+        let servingTeam = 'left'; 
+        let serverPlayer = null; 
+        let lastHitTeam = null;
+        let teamHitCount = { left: 0, right: 0 };
+        let pointWinner = null;
+        let pointEndTimer = 0;
+        let pointReason = '';
+        
+        let tossCharge = 0;
+        let tossDirection = 1;
+
+        // Camera State
+        let camX = 0;
+        let camTargetX = 0;
+
+        let hitStopFrames = 0;
+        let screenShake = 0;
+        let particles = [];
+        
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.vx = (Math.random() - 0.5) * 10;
+                this.vy = (Math.random() - 0.5) * 10 - 2;
+                this.life = 1.0;
+                this.color = color;
+                this.size = Math.random() * 5 + 3;
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += GRAVITY * 0.5;
+                this.life -= 0.05;
+            }
+            draw(ctx) {
+                ctx.globalAlpha = Math.max(0, this.life);
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI*2);
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+            }
+        }
+        
+        function spawnParticles(x, y, color, count) {
+            for(let i=0; i<count; i++) particles.push(new Particle(x, y, color));
+        }
+
+        const keys = {
+            w: false, a: false, s: false, d: false,
+            t: false, f: false, g: false, h: false,
+            ArrowUp: false, ArrowLeft: false, ArrowDown: false, ArrowRight: false,
+            i: false, j: false, k: false, l: false
+        };
+
+        function setupTouchButton(id, key) {
+            const btn = document.getElementById(id);
+            if (!btn) return;
+            const startHandler = (e) => { e.preventDefault(); keys[key] = true; };
+            const endHandler = (e) => { e.preventDefault(); keys[key] = false; };
+            btn.addEventListener('touchstart', startHandler, { passive: false });
+            btn.addEventListener('touchend', endHandler, { passive: false });
+            btn.addEventListener('mousedown', startHandler);
+            btn.addEventListener('mouseup', endHandler);
+            btn.addEventListener('mouseleave', endHandler);
+        }
+
+        setupTouchButton('btn-jump', 'w');
+        setupTouchButton('btn-down', 's');
+
+        // Joystick Logic
+        const joystickBase = document.getElementById('joystick-base');
+        const joystickKnob = document.getElementById('joystick-knob');
+        let joystickActive = false;
+        let baseCenterX = 0;
+        let maxTravel = 40; 
+        
+        function handleJoystickMove(e) {
+            if (!joystickActive) return;
+            e.preventDefault();
+            
+            let touch = e.type.includes('mouse') ? e : e.touches[0];
+            let deltaX = touch.clientX - baseCenterX;
+            
+            deltaX = Math.max(-maxTravel, Math.min(maxTravel, deltaX));
+            joystickKnob.style.left = `calc(50% - 27.5px + ${deltaX}px)`;
+            
+            const threshold = 10;
+            if (deltaX < -threshold) {
+                keys['a'] = true;
+                keys['d'] = false;
+            } else if (deltaX > threshold) {
+                keys['a'] = false;
+                keys['d'] = true;
+            } else {
+                keys['a'] = false;
+                keys['d'] = false;
+            }
+        }
+
+        function handleJoystickStart(e) {
+            e.preventDefault();
+            joystickActive = true;
+            joystickBase.classList.add('joystick-active');
+            let baseRect = joystickBase.getBoundingClientRect();
+            baseCenterX = baseRect.left + baseRect.width / 2;
+            handleJoystickMove(e);
+        }
+
+        function handleJoystickEnd(e) {
+            if (!joystickActive) return;
+            e.preventDefault();
+            joystickActive = false;
+            joystickBase.classList.remove('joystick-active');
+            joystickKnob.style.left = 'calc(50% - 27.5px)'; 
+            keys['a'] = false;
+            keys['d'] = false;
+        }
+
+        if (joystickBase) {
+            joystickBase.addEventListener('touchstart', handleJoystickStart, { passive: false });
+            joystickBase.addEventListener('touchmove', handleJoystickMove, { passive: false });
+            joystickBase.addEventListener('touchend', handleJoystickEnd, { passive: false });
+            joystickBase.addEventListener('touchcancel', handleJoystickEnd, { passive: false });
+            
+            joystickBase.addEventListener('mousedown', handleJoystickStart);
+            window.addEventListener('mousemove', handleJoystickMove);
+            window.addEventListener('mouseup', handleJoystickEnd);
+        }
+
+        pauseBtn.addEventListener('click', () => {
+            if (gameState !== 'START' && gameState !== 'GAME_OVER') {
+                isPaused = true;
+                pauseOverlay.style.display = 'flex';
+            }
+        });
+
+        resumeBtn.addEventListener('click', () => {
+            isPaused = false;
+            pauseOverlay.style.display = 'none';
+            requestAnimationFrame(gameLoop); 
+        });
+
+        quitBtn.addEventListener('click', () => {
+            isPaused = false;
+            pauseOverlay.style.display = 'none';
+            gameState = 'START';
+            showMessage('Indoor Volleyball', 'Select Game Mode', 'Start Game');
+            requestAnimationFrame(gameLoop); 
+        });
+
+        mode1pBtn.addEventListener('click', () => {
+            gameMode = '1P';
+            mode1pBtn.className = "bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-sm font-semibold";
+            mode2pBtn.className = "bg-gray-500 hover:bg-gray-600 text-white px-3 py-1.5 rounded text-sm font-semibold";
+            modePracticeBtn.className = "bg-gray-500 hover:bg-gray-600 text-white px-3 py-1.5 rounded text-sm font-semibold";
+        });
+
+        mode2pBtn.addEventListener('click', () => {
+            gameMode = '2P';
+            mode2pBtn.className = "bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-sm font-semibold";
+            mode1pBtn.className = "bg-gray-500 hover:bg-gray-600 text-white px-3 py-1.5 rounded text-sm font-semibold";
+            modePracticeBtn.className = "bg-gray-500 hover:bg-gray-600 text-white px-3 py-1.5 rounded text-sm font-semibold";
+        });
+
+        modePracticeBtn.addEventListener('click', () => {
+            gameMode = 'PRACTICE';
+            modePracticeBtn.className = "bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-sm font-semibold";
+            mode1pBtn.className = "bg-gray-500 hover:bg-gray-600 text-white px-3 py-1.5 rounded text-sm font-semibold";
+            mode2pBtn.className = "bg-gray-500 hover:bg-gray-600 text-white px-3 py-1.5 rounded text-sm font-semibold";
+        });
+
+        window.addEventListener('keydown', (e) => { if (keys.hasOwnProperty(e.key)) keys[e.key] = true; });
+        window.addEventListener('keyup', (e) => { if (keys.hasOwnProperty(e.key)) keys[e.key] = false; });
+
+        function resizeCanvas() {
+            const container = document.getElementById('canvas-container');
+            const ratio = canvas.width / canvas.height;
+            let newWidth = container.clientWidth;
+            let newHeight = newWidth / ratio;
+            
+            if (newHeight > window.innerHeight * 0.7) {
+                newHeight = window.innerHeight * 0.7;
+                newWidth = newHeight * ratio;
+            }
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        class Ball {
+            constructor() {
+                this.radius = 16;
+                this.teamCooldown = 0;
+                this.history = []; 
+                this.trailColor = 'rgba(255, 255, 255, 0.4)';
+                this.impactX = 0;
+                this.impactY = 0;
+                this.rotation = 0;
+                this.reset('left');
+            }
+
+            reset(side) {
+                this.vx = 0;
+                this.vy = 0;
+                this.teamCooldown = 0;
+                this.history = []; 
+                this.trailColor = 'rgba(255, 255, 255, 0.4)';
+                lastHitTeam = null;
+                teamHitCount = { left: 0, right: 0 };
+                
+                if (side === 'left') {
+                    this.x = LEFT_SERVE_LINE / 2;
+                    this.y = GROUND_Y - 100;
+                } else if (side === 'right') {
+                    this.x = canvas.width - (canvas.width - RIGHT_SERVE_LINE) / 2;
+                    this.y = GROUND_Y - 100;
+                }
+            }
+
+            update() {
+                if (gameState === 'SERVING') {
+                    if (serverPlayer) {
+                        this.x = serverPlayer.x + (serverPlayer.team === 'left' ? 15 : -15);
+                        this.y = serverPlayer.y - serverPlayer.height/2 - 15;
+                    }
+                    return;
+                }
+
+                if (gameState !== 'PLAYING' && gameState !== 'SERVING_TOSSED' && gameState !== 'POINT_OVER' && gameState !== 'MATCH_OVER') return;
+
+                this.rotation += this.vx * 0.04;
+
+                let speed = Math.hypot(this.vx, this.vy);
+                if (speed > 24) this.trailColor = 'rgba(255, 50, 50, 0.8)';
+                else if (speed > 18) this.trailColor = 'rgba(255, 150, 0, 0.7)';
+                else if (speed > 12) this.trailColor = 'rgba(50, 255, 100, 0.6)';
+                else if (speed > 6) this.trailColor = 'rgba(50, 200, 255, 0.5)';
+                else this.trailColor = 'rgba(255, 255, 255, 0.4)';
+
+                if (Math.abs(this.vx) > 3 || Math.abs(this.vy) > 5) {
+                    this.history.push({x: this.x, y: this.y});
+                    if (this.history.length > 7) this.history.shift();
+                } else if (this.history.length > 0) {
+                    this.history.shift(); 
+                }
+
+                if (this.teamCooldown > 0) this.teamCooldown--;
+
+                this.vy += GRAVITY;
+                this.x += this.vx;
+                this.y += this.vy;
+
+                if (this.x + this.radius > NET_X - NET_WIDTH/2 && this.x - this.radius < NET_X + NET_WIDTH/2) {
+                    if (this.y > GROUND_Y - NET_HEIGHT) {
+                        this.vx *= -0.8;
+                        if (this.x < NET_X) this.x = NET_X - NET_WIDTH/2 - this.radius;
+                        else this.x = NET_X + NET_WIDTH/2 + this.radius;
+                    }
+                }
+
+                if (this.y + this.radius >= GROUND_Y) {
+                    this.y = GROUND_Y - this.radius;
+                    if (gameState === 'PLAYING' || gameState === 'SERVING_TOSSED') {
+                         screenShake = 15;
+                         spawnParticles(this.x, GROUND_Y, '#a0aec0', 10); // Floor dust particles
+                         gameState = 'POINT_OVER';
+                         pointEndTimer = 0;
+                         this.impactX = this.x;
+                         this.impactY = GROUND_Y;
+                         
+                         let isOut = (this.x < LEFT_SERVE_LINE || this.x > RIGHT_SERVE_LINE);
+                         
+                         if (isOut) {
+                             pointWinner = lastHitTeam === 'left' ? 'right' : 'left';
+                             pointReason = 'OUT!';
+                         } else {
+                             pointWinner = this.x < NET_X ? 'right' : 'left';
+                             
+                             let receivingTeam = pointWinner === 'left' ? 'right' : 'left';
+                             if (gameState === 'SERVING_TOSSED' || teamHitCount[receivingTeam] === 0) {
+                                 pointReason = 'ACE!';
+                             } else {
+                                 pointReason = 'IN!';
+                             }
+                         }
+                         
+                         players.forEach(p => {
+                             p.animState = 'normal';
+                             p.actionTimer = 0;
+                             p.diveTimer = 0;
+                             p.hitAnimTimer = 0;
+                             if (p.team === pointWinner) {
+                                 if (p.role === 'hitter') {
+                                     p.celebTargetX = p.team === 'left' ? NET_X - 280 : NET_X + 280;
+                                 } else {
+                                     p.celebTargetX = p.team === 'left' ? NET_X - 220 : NET_X + 220;
+                                 }
+                             }
+                         });
+                    }
+                    
+                    // Ball Bounce Physics (Hardwood Floor instead of sand)
+                    if (Math.abs(this.vy) > 2) {
+                        this.vy = -Math.abs(this.vy) * 0.75; // More bouncy on wood
+                        this.vx *= 0.95;  // Less friction on wood
+                    } else {
+                        this.vy = 0;
+                        this.vx *= 0.9;
+                    }
+                }
+            }
+
+            draw(ctx) {
+                ctx.fillStyle = 'rgba(0,0,0,0.2)';
+                ctx.beginPath();
+                ctx.ellipse(this.x, GROUND_Y, this.radius, 4, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                if (this.history.length > 1) {
+                    ctx.beginPath();
+                    ctx.moveTo(this.history[0].x, this.history[0].y);
+                    for (let i = 1; i < this.history.length; i++) {
+                        ctx.lineTo(this.history[i].x, this.history[i].y);
+                    }
+                    ctx.strokeStyle = this.trailColor;
+                    ctx.lineWidth = this.radius * 1.5;
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                    ctx.stroke();
+                }
+
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+                
+                ctx.fillStyle = '#fde047';
+                ctx.beginPath();
+                ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.clip(); 
+
+                ctx.fillStyle = '#1d4ed8'; 
+                
+                ctx.beginPath();
+                ctx.moveTo(-this.radius, -this.radius*0.35);
+                ctx.quadraticCurveTo(0, 0, this.radius, -this.radius*0.35);
+                ctx.lineTo(this.radius, -this.radius);
+                ctx.lineTo(-this.radius, -this.radius);
+                ctx.fill();
+
+                ctx.beginPath();
+                ctx.moveTo(-this.radius, this.radius*0.35);
+                ctx.quadraticCurveTo(0, 0, this.radius, this.radius*0.35);
+                ctx.lineTo(this.radius, this.radius);
+                ctx.lineTo(-this.radius, this.radius);
+                ctx.fill();
+
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 3;
+                
+                ctx.beginPath();
+                ctx.moveTo(-this.radius, -this.radius*0.35);
+                ctx.quadraticCurveTo(0, 0, this.radius, -this.radius*0.35);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(-this.radius, this.radius*0.35);
+                ctx.quadraticCurveTo(0, 0, this.radius, this.radius*0.35);
+                ctx.stroke();
+
+                ctx.restore();
+                
+                ctx.strokeStyle = '#1a202c';
+                ctx.lineWidth = 3.5;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+        }
+
+        class Player {
+            constructor(startX, team, controls, isAI, role, charId) {
+                this.team = team;
+                this.controls = controls;
+                this.isAI = isAI;
+                this.role = role;
+                
+                this.charId = charId || (role === 'hitter' ? 'h_basic' : 's_basic');
+                this.profile = role === 'hitter' ? CHARACTERS.hitters[this.charId] : CHARACTERS.setters[this.charId];
+                
+                let scale = this.profile.scale || 1.0;
+                this.width = 30 * scale;
+                this.height = 70 * scale;
+                this.color = this.profile.color;
+                this.speed = this.profile.speed; 
+                this.jumpPower = this.profile.jump; 
+                
+                this.diveTimer = 0;
+                this.diveDir = 1;
+                
+                this.animPhase = Math.random() * Math.PI * 2; 
+                this.hitAnimTimer = 0; 
+                this.hitType = ''; 
+                this.animState = 'normal';
+                this.celebTargetX = 0;
+                this.celebFacing = 1;
+
+                if (this.team === 'left') {
+                    this.minX = -1500 + this.width / 2;
+                    this.maxX = NET_X - NET_WIDTH / 2 - this.width / 2;
+                } else {
+                    this.minX = NET_X + NET_WIDTH / 2 + this.width / 2;
+                    this.maxX = canvas.width + 1500 - this.width / 2;
+                }
+                this.reset(startX);
+            }
+
+            reset(x) {
+                this.x = x;
+                this.y = GROUND_Y - this.height / 2;
+                this.vx = 0;
+                this.vy = 0;
+                this.isGrounded = true;
+                this.actionTimer = 0; 
+                this.animState = 'normal';
+            }
+
+            update() {
+                if (gameState === 'POINT_OVER' || gameState === 'MATCH_OVER') {
+                    this.updateCelebration(gameState);
+                    return;
+                }
+                
+                if (this.actionTimer > 0) this.actionTimer--;
+                
+                if (this.hitAnimTimer > 0) this.hitAnimTimer--;
+                this.animPhase += (Math.abs(this.vx) > 0.5) ? 0.4 : 0.1;
+
+                if (this.diveTimer > 0) {
+                    this.diveTimer--;
+                    this.vx = this.diveDir * 16 * (this.diveTimer / 25);
+                } else if (gameState === 'PLAYING' || gameState === 'SERVING_TOSSED' || gameState === 'SERVING') {
+                    if (this.isAI) {
+                        this.aiBehavior();
+                    } else {
+                        this.vx = 0;
+                        
+                        if (gameState !== 'SERVING') {
+                            if (keys[this.controls.left]) this.vx = -this.speed;
+                            if (keys[this.controls.right]) this.vx = this.speed;
+                            
+                            if (keys[this.controls.up] && this.isGrounded) {
+                                this.vy = this.jumpPower;
+                                this.isGrounded = false;
+                            }
+                        }
+                        
+                        if (keys[this.controls.down] && this.actionTimer === 0) {
+                            if (gameState !== 'SERVING') {
+                                if (Math.abs(this.vx) > 3 && this.isGrounded) {
+                                    this.diveTimer = 25;
+                                    this.diveDir = Math.sign(this.vx);
+                                    this.vy = -4;
+                                    this.isGrounded = false;
+                                    this.actionTimer = 25; 
+                                    this.hitType = 'bump';
+                                    this.hitAnimTimer = 25;
+                                } else {
+                                    this.actionTimer = 15; 
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    this.vx = 0;
+                }
+
+                if (!this.isGrounded) {
+                    this.vy += GRAVITY;
+                }
+                
+                this.x += this.vx;
+                this.y += this.vy;
+
+                if (this.x < this.minX) this.x = this.minX;
+                if (this.x > this.maxX) this.x = this.maxX;
+
+                if (this.y + this.height / 2 >= GROUND_Y) {
+                    this.y = GROUND_Y - this.height / 2;
+                    this.vy = 0;
+                    this.isGrounded = true;
+                }
+            }
+
+            updateCelebration(state) {
+                this.animPhase += 0.2; 
+                
+                if (state === 'POINT_OVER') {
+                    if (this.team === pointWinner) {
+                        let diff = this.celebTargetX - this.x;
+                        if (Math.abs(diff) > 5) {
+                            this.vx = diff > 0 ? this.speed * 0.4 : -this.speed * 0.4;
+                            this.animState = 'walking';
+                        } else {
+                            this.vx = 0;
+                            this.x = this.celebTargetX;
+                            this.animState = 'highFive';
+                            let centerSide = this.team === 'left' ? NET_X - 250 : NET_X + 250;
+                            this.celebFacing = this.x < centerSide ? 1 : -1;
+                        }
+                    } else {
+                        this.vx = 0;
+                        this.animState = 'sad';
+                    }
+                } else if (state === 'MATCH_OVER') {
+                    this.vx = 0;
+                    if (this.team === matchWinner) {
+                        this.animState = 'epicWin';
+                        if (this.isGrounded && Math.random() < 0.1) {
+                            this.vy = -8 - Math.random() * 4;
+                            this.isGrounded = false;
+                        }
+                    } else {
+                        this.animState = 'epicLose';
+                    }
+                }
+                
+                if (!this.isGrounded) {
+                    this.vy += GRAVITY;
+                }
+                
+                this.x += this.vx;
+                this.y += this.vy;
+                
+                if (this.y + this.height / 2 >= GROUND_Y) {
+                    this.y = GROUND_Y - this.height / 2;
+                    this.vy = 0;
+                    this.isGrounded = true;
+                }
+            }
+
+            aiBehavior() {
+                this.vx = 0;
+                
+                if (gameState === 'SERVING' && serverPlayer === this) {
+                    this.vx = 0; 
+                    return; 
+                }
+
+                if (gameState === 'SERVING_TOSSED' && serverPlayer === this) {
+                    let diffX = ball.x - this.x;
+                    if (Math.abs(diffX) > 5) {
+                        this.vx = diffX > 0 ? this.speed : -this.speed;
+                    } else {
+                        this.vx = 0;
+                    }
+
+                    let currentHitBoxY = this.y - this.height / 2;
+                    if (!this.isGrounded) currentHitBoxY -= 15;
+                    
+                    if (ball.vy > 0 && ball.y > this.y - 180 && ball.y < this.y - 70) {
+                        if (this.isGrounded) {
+                            this.vy = this.jumpPower;
+                            this.isGrounded = false;
+                        }
+                    }
+
+                    if (ball.vy > 0 && ball.y > currentHitBoxY - 50 && ball.y < currentHitBoxY + 30) {
+                        if (this.actionTimer === 0) this.actionTimer = 15;
+                    }
+                    return; 
+                }
+
+                let targetX = this.x;
+                let isTarget = false;
+                
+                let currentHits = teamHitCount[this.team];
+                if (currentHits === 0 && this.role === 'hitter') isTarget = true;
+                if (currentHits === 1 && this.role === 'setter') isTarget = true;
+                if (currentHits === 2 && this.role === 'hitter') isTarget = true;
+                
+                let ballOnOurSide = (this.team === 'left' && ball.x < NET_X + 150) || (this.team === 'right' && ball.x > NET_X - 150);
+                let ballHeadingToUs = (this.team === 'left' && ball.vx < -2) || (this.team === 'right' && ball.vx > 2);
+                let opponentHits = teamHitCount[this.team === 'left' ? 'right' : 'left'];
+                let trackBall = ballOnOurSide || (ballHeadingToUs && lastHitTeam !== this.team);
+                
+                if (trackBall || opponentHits < 2 || lastHitTeam === this.team) {
+                    this.blockDecision = undefined;
+                }
+
+                let teammate = players.find(p => p.team === this.team && p !== this);
+                let isTeammateBlocking = Math.abs(teammate.x - NET_X) < 150 && !teammate.isGrounded;
+
+                let isBlocking = false;
+                if (!ballOnOurSide && (opponentHits === 2 || opponentHits === 3) && lastHitTeam !== this.team) {
+                    if (this.blockDecision === undefined) {
+                        this.blockDecision = Math.random() < 0.6; 
+                    }
+                    
+                    if (this.role === 'setter' && this.blockDecision && !isTeammateBlocking) {
+                        isBlocking = true;
+                        targetX = this.team === 'left' ? NET_X - 45 : NET_X + 45;
+                        let distToNet = Math.abs(ball.x - NET_X);
+                        
+                        if (this.isGrounded && Math.abs(this.x - targetX) < 50 && distToNet < 300) {
+                            let oppTeam = this.team === 'left' ? 'right' : 'left';
+                            let oppHitter = players.find(p => p.team === oppTeam && p.role === 'hitter');
+                            
+                            if (oppHitter && !oppHitter.isGrounded && ball.y < GROUND_Y - 150) {
+                                this.vy = this.jumpPower;
+                                this.isGrounded = false;
+                            } else if (ball.vy > 1 && ball.y < GROUND_Y - 150 && ball.y > GROUND_Y - 500) {
+                                this.vy = this.jumpPower;
+                                this.isGrounded = false;
+                            }
+                        }
+                    }
+                }
+                
+                if (trackBall && isTarget) {
+                    let a = 0.5 * GRAVITY;
+                    let b = ball.vy;
+                    let hitHeight = this.y - this.height / 2; 
+                    if (currentHits === 2) hitHeight -= 100; 
+                    
+                    let c = ball.y - hitHeight;
+                    let discriminant = b * b - 4 * a * c;
+                    
+                    if (discriminant >= 0) {
+                        let t = (-b + Math.sqrt(discriminant)) / (2 * a);
+                        if (t > 0 && t < 100) { 
+                            targetX = ball.x + ball.vx * t;
+                            targetX = Math.max(this.minX, Math.min(this.maxX, targetX));
+                            
+                            if (this.team === 'left') targetX = Math.min(targetX, NET_X - 40);
+                            if (this.team === 'right') targetX = Math.max(targetX, NET_X + 40);
+                        } else {
+                            targetX = ball.x; 
+                        }
+                    } else {
+                        targetX = ball.x;
+                    }
+                    
+                    let currentHitBoxY = this.y - this.height / 2;
+                    if (!this.isGrounded) currentHitBoxY -= 15;
+                    
+                    if (ball.y > currentHitBoxY - 160 && ball.y < currentHitBoxY + 30 && ball.vy > -2) {
+                        if (this.actionTimer === 0) {
+                            this.actionTimer = 15; 
+                        }
+                    }
+                    
+                    if (currentHits === 2 && this.isGrounded) {
+                        if (Math.abs(targetX - this.x) < 60 && ball.vy > -5 && ball.y > GROUND_Y - 600 && ball.y < GROUND_Y - 200) {
+                            this.vy = this.jumpPower;
+                            this.isGrounded = false;
+                        }
+                    }
+
+                    if (this.isGrounded && Math.abs(targetX - this.x) > 70 && ball.y > GROUND_Y - 250 && ball.vy > 3) {
+                        if (this.diveTimer === 0 && this.actionTimer === 0) {
+                            this.diveTimer = 25;
+                            this.diveDir = targetX > this.x ? 1 : -1;
+                            this.vy = -4;
+                            this.isGrounded = false;
+                            this.actionTimer = 25;
+                            this.hitType = 'bump';
+                            this.hitAnimTimer = 25;
+                        }
+                    }
+
+                } else if (!isBlocking) {
+                    if (!ballOnOurSide && opponentHits === 2 && lastHitTeam !== this.team) {
+                        if (this.role === 'hitter') {
+                            targetX = this.team === 'left' ? 200 : canvas.width - 200;
+                        } else {
+                            targetX = this.team === 'left' ? NET_X - 350 : NET_X + 350;
+                        }
+                    } else if (this.role === 'setter') {
+                        if (currentHits === 0 && lastHitTeam !== this.team) {
+                            targetX = this.team === 'left' ? NET_X - 100 : NET_X + 100;
+                        } else {
+                            targetX = this.team === 'left' ? NET_X - 150 : NET_X + 150;
+                        }
+                    } else if (this.role === 'hitter') {
+                        if (currentHits === 1 && lastHitTeam === this.team) {
+                            targetX = this.team === 'left' ? NET_X - 450 : NET_X + 450;
+                        } else {
+                            targetX = this.team === 'left' ? NET_X - 400 : NET_X + 400;
+                        }
+                    }
+                }
+                
+                let diffX = targetX - this.x;
+                if (Math.abs(diffX) > 10) {
+                    this.vx = diffX > 0 ? this.speed : -this.speed;
+                } else if (Math.abs(diffX) > 2) {
+                    this.vx = diffX > 0 ? this.speed * 0.4 : -this.speed * 0.4;
+                }
+            }
+
+            checkCollision(b) {
+                if (gameState !== 'PLAYING' && gameState !== 'SERVING_TOSSED') return;
+
+                if (b.teamCooldown > 0 && lastHitTeam === this.team) return;
+
+                let hitBoxY = this.y - this.height / 2 - 20;
+                let hitBoxH = this.height + 30;
+                let hitBoxW = this.width + 45;
+                if (this.diveTimer > 0) hitBoxW += 80; 
+                if (!this.isGrounded) { hitBoxY -= 15; hitBoxH += 15; }
+
+                if (b.x + b.radius > this.x - hitBoxW / 2 &&
+                    b.x - b.radius < this.x + hitBoxW / 2 &&
+                    b.y + b.radius > hitBoxY &&
+                    b.y - b.radius < hitBoxY + hitBoxH) {
+                    
+                    this.hitBall(b);
+                }
+            }
+
+            hitBall(b) {
+                if (gameMode === 'PRACTICE' && this.team === 'right') {
+                    gameState = 'POINT_OVER';
+                    pointEndTimer = 0;
+                    pointWinner = 'left';
+                    return;
+                }
+
+                b.trailColor = 'rgba(255, 255, 255, 0.4)'; 
+
+                let incomingSpeed = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
+                let accuracy = Math.min(1, this.actionTimer / 15); 
+                if (this.diveTimer > 0) accuracy = 0.8; 
+                
+                if (this.isAI) {
+                    if (incomingSpeed < 14 || gameState === 'SERVING_TOSSED') {
+                        accuracy = 1.0;
+                        if (this.actionTimer === 0) this.actionTimer = 15;
+                    }
+                    if (accuracy > 0 && accuracy < 0.8) {
+                        accuracy = 0.8; 
+                    }
+                }
+
+                let timingPenalty = false;
+                
+                if (this.actionTimer === 0) {
+                    timingPenalty = true; 
+                    accuracy = 0;
+                } else if (incomingSpeed > 22 && accuracy < 0.7) {
+                    timingPenalty = true;
+                }
+
+                if (gameState === 'SERVING_TOSSED') {
+                    if (serverPlayer !== this) return; 
+                    
+                    this.hitAnimTimer = 15;
+                    
+                    if (timingPenalty) {
+                         this.hitType = 'shank';
+                         b.vy = -5;
+                         b.vx = this.team === 'left' ? 5 : -5;
+                    } else {
+                         let targetX = this.team === 'left' ? RIGHT_SERVE_LINE - 50 - Math.random() * 200 : LEFT_SERVE_LINE + 50 + Math.random() * 200;
+                         
+                         if (accuracy > 0.8) {
+                             this.hitType = 'spike';
+                             b.vy = !this.isGrounded ? -8 : -11;
+                             b.trailColor = 'rgba(255, 100, 0, 0.8)';
+                             spawnParticles(b.x, b.y, 'orange', 15);
+                             screenShake = 12;
+                         } else {
+                             this.hitType = 'serve';
+                             b.vy = !this.isGrounded ? -12 : -15;
+                             b.trailColor = 'rgba(255, 255, 255, 0.4)';
+                             spawnParticles(b.x, b.y, 'white', 10);
+                             screenShake = 5;
+                         }
+                         
+                         let timeInAir = (-b.vy + Math.sqrt(b.vy * b.vy - 2 * GRAVITY * (b.y - GROUND_Y))) / GRAVITY;
+                         if (isNaN(timeInAir) || timeInAir <= 0) timeInAir = Math.abs(b.vy * 2) / GRAVITY; 
+                         b.vx = (targetX - b.x) / timeInAir;
+                    }
+                    
+                    gameState = 'PLAYING';
+                    lastHitTeam = this.team;
+                    teamHitCount[this.team] = 1; 
+                    b.teamCooldown = 15;
+                    
+                    if (b.y > this.y - this.height/2) b.y = this.y - this.height/2 - b.radius;
+                    return;
+                }
+
+                let isBlock = false;
+                if (!this.isGrounded && Math.abs(this.x - NET_X) < 150 && lastHitTeam && lastHitTeam !== this.team && b.y < GROUND_Y - NET_HEIGHT + 50) {
+                    isBlock = true; 
+                }
+
+                if (!isBlock && lastHitTeam !== this.team) {
+                    teamHitCount[this.team === 'left' ? 'right' : 'left'] = 0;
+                }
+
+                if (!isBlock && teamHitCount[this.team] >= 3 && lastHitTeam === this.team) {
+                    gameState = 'POINT_OVER';
+                    pointEndTimer = 0;
+                    pointWinner = this.team === 'left' ? 'right' : 'left';
+                    this.hitType = 'shank';
+                    this.hitAnimTimer = 15;
+                    b.vy = -6; 
+                    b.vx = this.team === 'left' ? -3 : 3;
+                    return;
+                }
+
+                let currentHits = teamHitCount[this.team];
+                let setter = this.team === 'left' ? p2Left : p2Right;
+                
+                if (isBlock) {
+                    this.hitType = 'block';
+                    this.hitAnimTimer = 15;
+                    
+                    let mistimed = Math.abs(this.vy) > 5;
+                    
+                    if (mistimed) {
+                        b.vy = -12;
+                        b.vx = this.team === 'left' ? -15 : 15; 
+                        spawnParticles(b.x, b.y, '#9ca3af', 15);
+                        screenShake = 8;
+                    } else {
+                        b.vy = 24; 
+                        b.vx = this.team === 'left' ? 5 : -5; 
+                        spawnParticles(b.x, b.y, 'orange', 25);
+                        screenShake = 18; 
+                    }
+                    
+                    lastHitTeam = this.team;
+                    b.teamCooldown = 15;
+                    return; 
+                } else if (timingPenalty) {
+                    this.hitType = 'shank';
+                    this.hitAnimTimer = 15;
+                    b.vy = -12;
+                    b.vx = this.team === 'left' ? -4 : 4;
+                } else if (currentHits === 0) {
+                    this.hitType = 'bump';
+                    this.hitAnimTimer = 15;
+                    let targetX = setter.x;
+                    if (this.team === 'left') targetX = Math.min(targetX, NET_X - 100);
+                    if (this.team === 'right') targetX = Math.max(targetX, NET_X + 100);
+                    
+                    let deviation = (1 - accuracy) * 50 * (Math.random() < 0.5 ? 1 : -1); 
+                    if (this.isAI) deviation *= 0.1; 
+                    
+                    deviation *= Math.max(1, incomingSpeed / 10);
+                    deviation /= this.profile.accuracy; 
+                    
+                    targetX += deviation;
+
+                    b.vy = -18; 
+                    let timeInAir = Math.abs(b.vy * 2) / GRAVITY;
+                    b.vx = (targetX - b.x) / timeInAir;
+                } else if (currentHits === 1) {
+                    this.hitType = 'set';
+                    this.hitAnimTimer = 15;
+                    let distFromNet = Math.abs(this.x - NET_X);
+                    let targetX = this.team === 'left' ? NET_X - 80 : NET_X + 80;
+                    
+                    if (distFromNet <= 250) {
+                        b.vy = -18; 
+                    } else {
+                        b.vy = -22; 
+                        targetX = this.team === 'left' ? NET_X - 250 : NET_X + 250;
+                    }
+                    
+                    let timeInAir = Math.abs(b.vy * 2) / GRAVITY;
+                    b.vx = (targetX - b.x) / timeInAir;
+                } else {
+                    if (!this.isGrounded && this.y < GROUND_Y - 40 && this.diveTimer === 0) {
+                        this.hitType = 'spike';
+                        this.hitAnimTimer = 15;
+                        let distToNet = Math.abs(NET_X - b.x);
+                        let targetX;
+                        
+                        let isSteep = Math.random() > 0.5; 
+                        
+                        if (distToNet < 180 && isSteep) {
+                            b.vy = 12; 
+                            targetX = this.team === 'left' ? NET_X + 150 + Math.random()*200 : NET_X - 150 - Math.random()*200;
+                        } else {
+                            b.vy = 2 + Math.random() * 5; 
+                            targetX = this.team === 'left' ? RIGHT_SERVE_LINE - 50 - Math.random()*150 : LEFT_SERVE_LINE + 50 + Math.random()*150;
+                        }
+                        
+                        let deviation = (1 - accuracy) * 150 * (Math.random() < 0.5 ? 1 : -1); 
+                        deviation /= this.profile.accuracy; 
+                        targetX += deviation;
+
+                        let netClearance = 80 + Math.random() * 100;
+                        if (this.team === 'left' && targetX < NET_X + netClearance) targetX = NET_X + netClearance;
+                        if (this.team === 'right' && targetX > NET_X - netClearance) targetX = NET_X - netClearance;
+                        
+                        if (this.team === 'left' && targetX > RIGHT_SERVE_LINE - 20) targetX = RIGHT_SERVE_LINE - 20;
+                        if (this.team === 'right' && targetX < LEFT_SERVE_LINE + 20) targetX = LEFT_SERVE_LINE + 20;
+
+                        let speedMult = 0.4 + (accuracy * 2.0); 
+                        speedMult *= this.profile.power; 
+
+                        if (speedMult > 1.8) {
+                            speedMult += 1.2; 
+                            hitStopFrames = 8; 
+                        } else if (speedMult > 1.3) {
+                            speedMult += 0.4; 
+                        }
+
+                        let timeInAir = (-b.vy + Math.sqrt(b.vy * b.vy - 2 * GRAVITY * (b.y - GROUND_Y))) / GRAVITY;
+                        if (isNaN(timeInAir) || timeInAir <= 0) timeInAir = Math.abs(b.vy * 2) / GRAVITY;
+                        
+                        b.vx = ((targetX - b.x) / timeInAir) * speedMult;
+                        b.vy *= speedMult;
+                        
+                        let impactColor = speedMult > 2.8 ? 'red' : (speedMult > 1.5 ? 'orange' : '#eee');
+                        let shakeLevel = speedMult > 2.8 ? 25 : (speedMult > 1.5 ? 10 : 3);
+                        
+                        if (speedMult > 2.8) {
+                            b.trailColor = 'rgba(255, 60, 0, 0.9)'; 
+                        }
+
+                        spawnParticles(b.x, b.y, impactColor, 15); 
+                        screenShake = shakeLevel; 
+                    } else {
+                        this.hitType = 'bump';
+                        this.hitAnimTimer = 15;
+                        b.vy = -16; 
+                        let targetX = this.team === 'left' ? RIGHT_SERVE_LINE - 100 : LEFT_SERVE_LINE + 100;
+                        
+                        let deviation = (1 - accuracy) * 150 * (Math.random() < 0.5 ? 1 : -1);
+                        deviation /= this.profile.accuracy; 
+                        targetX += deviation;
+                        
+                        let timeInAir = Math.abs(b.vy * 2) / GRAVITY;
+                        b.vx = (targetX - b.x) / timeInAir;
+                    }
+                }
+
+                b.vx = Math.max(-40, Math.min(40, b.vx));
+                b.vy = Math.max(-35, Math.min(30, b.vy));
+
+                if (b.y > this.y - this.height/2 - b.radius) {
+                     b.y = this.y - this.height/2 - b.radius - 5;
+                }
+
+                lastHitTeam = this.team;
+                teamHitCount[this.team]++;
+                b.teamCooldown = 15; 
+                
+                if (!this.isGrounded) spawnParticles(this.x, GROUND_Y, '#e2e8f0', 5); // Indoor floor dust
+            }
+
+            draw(ctx) {
+                let shadowScale = Math.max(0.3, 1 - (GROUND_Y - (this.y + this.height/2)) / 300);
+                ctx.fillStyle = `rgba(0,0,0,${0.25 * shadowScale})`;
+                ctx.beginPath();
+                ctx.ellipse(this.x, GROUND_Y, this.width * shadowScale, 6 * shadowScale, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                let facing = this.team === 'left' ? 1 : -1;
+                let isMoving = Math.abs(this.vx) > 0.1;
+                let runCycle = this.isGrounded && isMoving ? Math.sin(this.animPhase) : 0;
+                let bob = this.isGrounded && !isMoving ? Math.sin(this.animPhase) * 2 : 0;
+                
+                let bodyY = bob;
+                let isReadying = keys[this.controls.down] && this.actionTimer === 0 && this.isGrounded && gameState !== 'SERVING' && gameState !== 'POINT_OVER' && gameState !== 'MATCH_OVER';
+                if (isReadying) bodyY += 12; 
+                
+                let isDiving = this.diveTimer > 0;
+                
+                let headRot = 0;
+                let globalRot = 0;
+
+                let leftLegAngle = runCycle * 0.6;
+                let rightLegAngle = -runCycle * 0.6;
+                let backArmAngle = -runCycle * 0.5;
+                let frontArmAngle = runCycle * 0.5;
+
+                if (!this.isGrounded && gameState !== 'MATCH_OVER') { 
+                    leftLegAngle = -0.1 * facing;
+                    rightLegAngle = 0.5 * facing;
+                    backArmAngle = -Math.PI * 0.8 * facing;
+                    frontArmAngle = -Math.PI * 0.8 * facing;
+                } else if (isReadying) { 
+                    leftLegAngle = 0.4 * facing;
+                    rightLegAngle = -0.4 * facing;
+                    backArmAngle = 0.6 * facing;
+                    frontArmAngle = 0.6 * facing;
+                }
+
+                if (this.hitAnimTimer > 0) {
+                    let p = 1 - (this.hitAnimTimer / 15); 
+                    
+                    if (this.hitType === 'bump' || this.hitType === 'shank') {
+                        let angle = (0.2 + p * 0.6) * facing; 
+                        backArmAngle = angle;
+                        frontArmAngle = angle;
+                    } else if (this.hitType === 'spike' || this.hitType === 'serve') {
+                        backArmAngle = (-Math.PI + p * Math.PI * 1.6) * facing;
+                        frontArmAngle = (-0.5 - p * 0.5) * facing; 
+                    } else if (this.hitType === 'set') {
+                        backArmAngle = -Math.PI * 0.8 * facing;
+                        frontArmAngle = -Math.PI * 0.8 * facing;
+                    } else if (this.hitType === 'block') {
+                        backArmAngle = -Math.PI * 0.9 * facing;
+                        frontArmAngle = -Math.PI * 0.9 * facing;
+                    }
+                }
+                
+                if (this.animState === 'highFive') {
+                    facing = this.celebFacing;
+                    backArmAngle = -Math.PI * 0.7 * facing;
+                    frontArmAngle = 0;
+                    leftLegAngle = 0;
+                    rightLegAngle = 0;
+                } else if (this.animState === 'sad') {
+                    headRot = 0.5 * facing;
+                    backArmAngle = 0.2 * facing;
+                    frontArmAngle = 0.2 * facing;
+                    leftLegAngle = 0;
+                    rightLegAngle = 0;
+                } else if (this.animState === 'epicWin') {
+                    backArmAngle = (-Math.PI * 0.8 + Math.sin(this.animPhase * 2) * 0.2) * facing;
+                    frontArmAngle = (-Math.PI * 0.8 - Math.sin(this.animPhase * 2) * 0.2) * facing;
+                    headRot = -0.3 * facing;
+                    if (!this.isGrounded) { leftLegAngle = 0.2 * facing; rightLegAngle = -0.2 * facing; }
+                } else if (this.animState === 'epicLose') {
+                    globalRot = (Math.PI / 2) * facing;
+                    bodyY += 15;
+                    backArmAngle = Math.PI * 0.7 * facing;
+                    frontArmAngle = Math.PI * 0.7 * facing;
+                    leftLegAngle = 0;
+                    rightLegAngle = 0;
+                }
+
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(globalRot);
+                
+                if (isDiving) {
+                    ctx.translate(0, bodyY - 15);
+                    ctx.rotate((Math.PI / 2) * this.diveDir);
+                    ctx.translate(0, -(bodyY - 15));
+                    bodyY += 20; 
+                }
+
+                if (this.actionTimer > 0) {
+                    ctx.fillStyle = 'rgba(72, 187, 120, 0.4)'; 
+                    ctx.beginPath();
+                    ctx.arc(0, bodyY - 15, 45, 0, Math.PI*2);
+                    ctx.fill();
+                }
+
+                const drawCapsule = (x, y, length, angle, width, color) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(angle);
+                    
+                    ctx.strokeStyle = '#1a202c'; 
+                    ctx.lineWidth = width + 3.5;
+                    ctx.lineCap = 'round';
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.lineTo(0, length);
+                    ctx.stroke();
+
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = width;
+                    ctx.stroke();
+                    ctx.restore();
+                };
+
+                let skinColor = '#ffcc99';
+                let jerseyColor = this.color;
+                let shortsColor = '#1a202c';
+                
+                drawCapsule(facing * -5, bodyY + 12, 22, rightLegAngle, 10, skinColor); 
+                drawCapsule(facing * -5, bodyY + 12, 10, rightLegAngle, 12, shortsColor); 
+                drawCapsule(0, bodyY - 15, 20, backArmAngle, 8, skinColor); 
+
+                ctx.fillStyle = '#1a202c';
+                ctx.beginPath();
+                ctx.roundRect(-16, bodyY - 27, 32, 42, 10);
+                ctx.fill();
+
+                ctx.fillStyle = jerseyColor;
+                ctx.beginPath();
+                ctx.roundRect(-14, bodyY - 25, 28, 38, 8);
+                ctx.fill();
+                
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 14px Inter';
+                ctx.textAlign = 'center';
+                ctx.fillText(this.role === 'setter' ? 'S' : 'H', 0, bodyY + 5);
+
+                drawCapsule(facing * 5, bodyY + 12, 22, leftLegAngle, 10, skinColor); 
+                drawCapsule(facing * 5, bodyY + 12, 10, leftLegAngle, 12, shortsColor); 
+                drawCapsule(0, bodyY - 15, 20, frontArmAngle, 8, skinColor); 
+
+                ctx.save();
+                ctx.translate(0, bodyY - 34);
+                ctx.rotate(headRot);
+
+                ctx.fillStyle = '#1a202c';
+                ctx.beginPath();
+                ctx.arc(0, 0, 17, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = skinColor;
+                ctx.beginPath();
+                ctx.arc(0, 0, 15, 0, Math.PI * 2);
+                ctx.fill();
+
+                if (this.role === 'setter') {
+                    ctx.fillStyle = '#fff';
+                    ctx.fillRect(-15, -8, 30, 6);
+                } else {
+                    ctx.fillStyle = '#111';
+                    ctx.fillRect(-15, -8, 30, 8);
+                    ctx.fillRect(facing * 4, -2, 10, 5); 
+                }
+                
+                ctx.restore(); 
+                ctx.restore(); 
+            }
+        }
+
+        const p1LeftControls = { up: 'w', left: 'a', down: 's', right: 'd' };
+        const p2LeftControls = { up: 't', left: 'f', down: 'g', right: 'h' };
+        let p1Left = new Player(NET_X - 400, 'left', p1LeftControls, false, 'hitter', 'h_basic'); 
+        let p2Left = new Player(NET_X - 150, 'left', p2LeftControls, false, 'setter', 's_basic'); 
+
+        const p1RightControls = { up: 'ArrowUp', left: 'ArrowLeft', down: 'ArrowDown', right: 'ArrowRight' };
+        const p2RightControls = { up: 'i', left: 'j', down: 'k', right: 'l' };
+        let p1Right = new Player(NET_X + 400, 'right', p1RightControls, true, 'hitter', 'h_basic'); 
+        let p2Right = new Player(NET_X + 150, 'right', p2RightControls, true, 'setter', 's_basic'); 
+
+        let players = [p1Left, p2Left, p1Right, p2Right];
+        const ball = new Ball();
+
+        function applyModeSettings() {
+            if (gameMode === '1P') {
+                p1Left.isAI = false; 
+                p2Left.isAI = true;   
+                p1Right.isAI = true;  
+                p2Right.isAI = true;  
+            } else if (gameMode === '2P') {
+                p1Left.isAI = false;
+                p2Left.isAI = false;
+                p1Right.isAI = true;
+                p2Right.isAI = true;
+            } else if (gameMode === 'PRACTICE') {
+                p1Left.isAI = false;
+                p2Left.isAI = true; 
+                p1Right.isAI = true;
+                p2Right.isAI = true;
+            }
+        }
+
+        function drawBackground() {
+            let horizonY = GROUND_Y - 200; 
+
+            // 1. Gym Wall
+            ctx.fillStyle = '#cbd5e0'; // Light gray wall
+            ctx.fillRect(-2500, 0, canvas.width + 5000, horizonY);
+
+            // 2. Wall details (Stripes, Banners)
+            ctx.fillStyle = '#2b6cb0'; // School blue stripe
+            ctx.fillRect(-2500, horizonY - 150, canvas.width + 5000, 30);
+            ctx.fillStyle = '#c53030'; // School red stripe
+            ctx.fillRect(-2500, horizonY - 120, canvas.width + 5000, 10);
+
+            // Hanging Banners
+            ctx.fillStyle = '#2b6cb0';
+            ctx.fillRect(300, -20, 80, 160);
+            ctx.fillStyle = '#e53e3e';
+            ctx.fillRect(500, -20, 80, 160);
+            ctx.fillStyle = '#d69e2e';
+            ctx.fillRect(1200, -20, 80, 160);
+            ctx.fillStyle = '#38a169';
+            ctx.fillRect(1400, -20, 80, 160);
+            
+            // Bottom cuts for banners
+            ctx.fillStyle = '#cbd5e0';
+            ctx.beginPath(); ctx.moveTo(300, 140); ctx.lineTo(340, 100); ctx.lineTo(380, 140); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(500, 140); ctx.lineTo(540, 100); ctx.lineTo(580, 140); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(1200, 140); ctx.lineTo(1240, 100); ctx.lineTo(1280, 140); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(1400, 140); ctx.lineTo(1440, 100); ctx.lineTo(1480, 140); ctx.fill();
+
+            // Dynamic Scoreboard on Wall
+            ctx.fillStyle = '#1a202c';
+            ctx.fillRect(canvas.width/2 - 160, 50, 320, 130);
+            ctx.strokeStyle = '#4a5568';
+            ctx.lineWidth = 6;
+            ctx.strokeRect(canvas.width/2 - 160, 50, 320, 130);
+            
+            ctx.fillStyle = '#e53e3e';
+            ctx.font = 'bold 32px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText("HOME    GUEST", canvas.width/2, 95);
+            
+            ctx.font = 'bold 64px monospace';
+            let p1Score = scoreLeft.toString().padStart(2, '0');
+            let p2Score = scoreRight.toString().padStart(2, '0');
+            ctx.fillText(`${p1Score}   ${p2Score}`, canvas.width/2, 160);
+            // Center colon on scoreboard
+            ctx.font = 'bold 40px monospace';
+            if (Math.floor(Date.now() / 500) % 2 === 0 && gameState === 'PLAYING') {
+                ctx.fillText(":", canvas.width/2, 150);
+            } else {
+                ctx.fillText(":", canvas.width/2, 150); 
+            }
+
+            // Folded Basketball Hoops (Background)
+            ctx.lineWidth = 6;
+            ctx.strokeStyle = '#a0aec0';
+            // Left Hoop
+            ctx.beginPath(); ctx.moveTo(100, -50); ctx.lineTo(150, 80); ctx.stroke();
+            ctx.fillStyle = '#fff'; ctx.fillRect(120, 70, 60, 40);
+            ctx.strokeStyle = '#e53e3e'; ctx.lineWidth = 4; ctx.strokeRect(135, 85, 30, 20);
+            // Right Hoop
+            ctx.strokeStyle = '#a0aec0'; ctx.lineWidth = 6;
+            ctx.beginPath(); ctx.moveTo(canvas.width - 100, -50); ctx.lineTo(canvas.width - 150, 80); ctx.stroke();
+            ctx.fillStyle = '#fff'; ctx.fillRect(canvas.width - 180, 70, 60, 40);
+            ctx.strokeStyle = '#e53e3e'; ctx.lineWidth = 4; ctx.strokeRect(canvas.width - 165, 85, 30, 20);
+
+            // 3. Bleachers (Spanning across the background below the stripes)
+            ctx.fillStyle = '#718096'; 
+            ctx.fillRect(-2500, horizonY - 100, canvas.width + 5000, 100);
+            for(let i=0; i<5; i++) {
+                ctx.fillStyle = i % 2 === 0 ? '#4a5568' : '#2d3748';
+                ctx.fillRect(-2500, horizonY - 100 + (i*20), canvas.width + 5000, 20);
+            }
+
+            // 4. Wooden Floor
+            let floorGrad = ctx.createLinearGradient(0, horizonY, 0, canvas.height);
+            floorGrad.addColorStop(0, '#e5c07b'); // Lighter wood
+            floorGrad.addColorStop(1, '#c08a3e'); // Darker near camera
+            ctx.fillStyle = floorGrad;
+            ctx.fillRect(-2500, horizonY, canvas.width + 5000, canvas.height - horizonY);
+            
+            // Wood Floorboards (Perspective Lines)
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.08)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            // Horizontal lines
+            for (let i = horizonY; i < canvas.height; i += 30) {
+                ctx.moveTo(-2500, i);
+                ctx.lineTo(canvas.width + 2500, i);
+            }
+            // Perspective vertical lines
+            for (let i = -2500; i < canvas.width + 2500; i += 150) {
+                ctx.moveTo(i, horizonY);
+                ctx.lineTo(i - 400, canvas.height); 
+            }
+            ctx.stroke();
+
+            // 5. Gym Court Lines (Solid crisp lines)
+            ctx.fillStyle = '#fff'; // White baseline
+            ctx.fillRect(-2500, horizonY + 50, canvas.width + 5000, 8);
+            
+            ctx.fillStyle = '#fff'; // Serve lines
+            ctx.fillRect(LEFT_SERVE_LINE - 3, horizonY, 6, canvas.height - horizonY);
+            ctx.fillRect(RIGHT_SERVE_LINE - 3, horizonY, 6, canvas.height - horizonY);
+            
+            ctx.fillStyle = '#3182ce'; // Blue attack lines (10ft lines)
+            ctx.fillRect(NET_X - 350 - 3, horizonY, 6, canvas.height - horizonY);
+            ctx.fillRect(NET_X + 350 - 3, horizonY, 6, canvas.height - horizonY);
+            
+            ctx.fillStyle = '#fff'; // Center line
+            ctx.fillRect(NET_X - 4, horizonY, 8, canvas.height - horizonY);
+
+            // 6. Net Posts & Net (Indoor Metal/Padded Style)
+            // Padding
+            ctx.fillStyle = '#c53030'; // Red padding around pole
+            ctx.fillRect(NET_X - NET_WIDTH / 2 - 4, GROUND_Y - NET_HEIGHT + 30, NET_WIDTH + 8, NET_HEIGHT + 40); 
+            
+            // Inner metal post sticking out top
+            ctx.fillStyle = '#e2e8f0'; 
+            ctx.fillRect(NET_X - NET_WIDTH / 2, GROUND_Y - NET_HEIGHT, NET_WIDTH, 30);
+            
+            // Net Pattern (White Mesh)
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            for (let i = 0; i <= NET_HEIGHT; i += 15) {
+                ctx.moveTo(NET_X - NET_WIDTH / 2, GROUND_Y - NET_HEIGHT + i);
+                ctx.lineTo(NET_X + NET_WIDTH / 2, GROUND_Y - NET_HEIGHT + i);
+            }
+            for (let i = 0; i <= NET_WIDTH; i += 6) {
+                ctx.moveTo(NET_X - NET_WIDTH / 2 + i, GROUND_Y - NET_HEIGHT);
+                ctx.lineTo(NET_X - NET_WIDTH / 2 + i, GROUND_Y);
+            }
+            ctx.stroke();
+
+            // Red & White Net Antennas
+            ctx.lineWidth = 5;
+            ctx.beginPath();
+            ctx.strokeStyle = '#d32f2f';
+            ctx.moveTo(NET_X - NET_WIDTH / 2 - 3, GROUND_Y - NET_HEIGHT);
+            ctx.lineTo(NET_X - NET_WIDTH / 2 - 3, GROUND_Y - NET_HEIGHT - 90);
+            ctx.moveTo(NET_X + NET_WIDTH / 2 + 3, GROUND_Y - NET_HEIGHT);
+            ctx.lineTo(NET_X + NET_WIDTH / 2 + 3, GROUND_Y - NET_HEIGHT - 90);
+            ctx.stroke();
+            
+            ctx.strokeStyle = '#fff';
+            ctx.beginPath();
+            for(let i=10; i<90; i+=20) {
+                 ctx.moveTo(NET_X - NET_WIDTH / 2 - 3, GROUND_Y - NET_HEIGHT - i);
+                 ctx.lineTo(NET_X - NET_WIDTH / 2 - 3, GROUND_Y - NET_HEIGHT - i - 10);
+                 ctx.moveTo(NET_X + NET_WIDTH / 2 + 3, GROUND_Y - NET_HEIGHT - i);
+                 ctx.lineTo(NET_X + NET_WIDTH / 2 + 3, GROUND_Y - NET_HEIGHT - i - 10);
+            }
+            ctx.stroke();
+
+            // Top Tape
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(NET_X - NET_WIDTH / 2 - 5, GROUND_Y - NET_HEIGHT, NET_WIDTH + 10, 20);
+            // Bottom Tape
+            ctx.fillRect(NET_X - NET_WIDTH / 2 - 5, GROUND_Y - 20, NET_WIDTH + 10, 10);
+        }
+
+        function updateScores() {
+            scoreLeftEl.innerText = `Left: ${scoreLeft}`;
+            scoreRightEl.innerText = `Right: ${scoreRight}`;
+        }
+
+        function showMessage(title, text, btnText) {
+            msgTitle.innerText = title;
+            msgText.innerText = text;
+            actionBtn.innerText = btnText;
+            msgBox.style.display = 'block';
+        }
+
+        function hideMessage() {
+            msgBox.style.display = 'none';
+        }
+
+        function resetPositions() {
+            if (servingTeam === 'left') {
+                serverPlayer = p1Left;
+                p1Left.reset(LEFT_SERVE_LINE / 2);
+                p2Left.reset(NET_X - 150); 
+            } else {
+                p1Left.reset(NET_X - 400);
+                p2Left.reset(NET_X - 150);
+            }
+
+            if (servingTeam === 'right') {
+                serverPlayer = p1Right;
+                p1Right.reset(canvas.width - (canvas.width - RIGHT_SERVE_LINE) / 2);
+                p2Right.reset(NET_X + 150); 
+            } else {
+                p1Right.reset(NET_X + 400);
+                p2Right.reset(NET_X + 150);
+            }
+
+            ball.reset(servingTeam);
+        }
+
+        function executeToss(player) {
+            let angle = Math.PI/2 - (tossCharge * Math.PI/18); 
+            let power = 13 + (tossCharge * 5); 
+            
+            ball.vy = -Math.sin(angle) * power;
+            ball.vx = Math.cos(angle) * power * (player.team === 'left' ? 1 : -1);
+            
+            gameState = 'SERVING_TOSSED';
+            tossCharge = 0;
+            
+            ball.teamCooldown = 15;
+            lastHitTeam = player.team;
+        }
+
+        actionBtn.addEventListener('click', () => {
+            if (gameState === 'START' || gameState === 'MATCH_OVER' || gameState === 'GAME_OVER') {
+                scoreLeft = 0;
+                scoreRight = 0;
+                updateScores();
+                servingTeam = 'left';
+                const scoreLimitSelect = document.getElementById('score-limit');
+                if (scoreLimitSelect) {
+                    WIN_SCORE = parseInt(scoreLimitSelect.value);
+                }
+                recentlyUnlocked = [];
+
+                let lHitterId = document.getElementById('select-hitter').value || 'h_basic';
+                let lSetterId = document.getElementById('select-setter').value || 's_basic';
+                
+                let hitterKeys = Object.keys(CHARACTERS.hitters);
+                let setterKeys = Object.keys(CHARACTERS.setters);
+                
+                let rHitterId = hitterKeys[Math.floor(Math.random() * hitterKeys.length)];
+                let rSetterId = setterKeys[Math.floor(Math.random() * setterKeys.length)];
+
+                p1Left = new Player(NET_X - 400, 'left', p1LeftControls, false, 'hitter', lHitterId); 
+                p2Left = new Player(NET_X - 150, 'left', p2LeftControls, false, 'setter', lSetterId);
+                p1Right = new Player(NET_X + 400, 'right', p1RightControls, true, 'hitter', rHitterId); 
+                p2Right = new Player(NET_X + 150, 'right', p2RightControls, true, 'setter', rSetterId);
+                players = [p1Left, p2Left, p1Right, p2Right];
+            }
+            
+            applyModeSettings();
+            hideMessage();
+            resetPositions();
+            gameState = 'SERVING';
+            tossCharge = 0;
+        });
+
+        populateCharSelects();
+        updateScores();
+        msgBox.style.display = 'block';
+
+        function gameLoop() {
+            if (isPaused) return; 
+
+            if (gameState === 'SERVING') {
+                camTargetX = servingTeam === 'left' ? -100 : 100; 
+            } else if (gameState === 'PLAYING' || gameState === 'POINT_OVER' || gameState === 'SERVING_TOSSED' || gameState === 'MATCH_OVER') {
+                let ballOffset = ball.x - canvas.width / 2;
+                if (Math.abs(ballOffset) < 400) {
+                    camTargetX = ballOffset * 0.4; 
+                } else {
+                    let excess = Math.abs(ballOffset) - 400;
+                    camTargetX = (400 * 0.4 + excess) * Math.sign(ballOffset); 
+                }
+                
+                if (gameState === 'MATCH_OVER') {
+                    camTargetX = matchWinner === 'left' ? -200 : 200; 
+                }
+                camTargetX = Math.max(-2000, Math.min(2000, camTargetX)); 
+            } else {
+                camTargetX = 0;
+            }
+            camX += (camTargetX - camX) * 0.08; 
+
+            ctx.save();
+            
+            let dx = -camX;
+            let dy = 0;
+            if (screenShake > 0) {
+                dx += (Math.random() - 0.5) * screenShake;
+                dy += (Math.random() - 0.5) * screenShake;
+                screenShake *= 0.9;
+                if (screenShake < 0.5) screenShake = 0;
+            }
+            ctx.translate(dx, dy);
+
+            ctx.clearRect(camX, 0, canvas.width, canvas.height); 
+            
+            drawBackground();
+
+            if (gameState === 'SERVING') {
+                if (serverPlayer.isAI) {
+                    if (tossCharge === 0) tossCharge = 0.01;
+                    tossCharge += 0.015; 
+                    if (tossCharge >= 0.4) { 
+                        executeToss(serverPlayer);
+                    }
+                } else {
+                    let hitKey = serverPlayer.controls.down;
+                    if (keys[hitKey]) {
+                        if (tossCharge === 0) tossCharge = 0.01;
+                        tossCharge += 0.015 * tossDirection;
+                        if (tossCharge >= 1 || tossCharge <= 0) tossDirection *= -1;
+                    } else if (tossCharge > 0) {
+                        executeToss(serverPlayer);
+                    }
+                }
+            }
+
+            if (hitStopFrames > 0) {
+                hitStopFrames--;
+            } else if (gameState === 'PLAYING' || gameState === 'SERVING_TOSSED' || gameState === 'SERVING' || gameState === 'POINT_OVER') {
+                players.forEach(p => {
+                    p.update();
+                    if (gameState !== 'POINT_OVER') p.checkCollision(ball);
+                });
+                
+                if (gameState !== 'SERVING') {
+                    ball.update();
+                }
+            }
+
+            players.forEach(p => p.draw(ctx));
+            
+            if (gameState === 'SERVING_TOSSED' || gameState === 'PLAYING' || gameState === 'POINT_OVER' || gameState === 'MATCH_OVER') {
+                 ball.draw(ctx);
+            }
+            
+            if (gameState === 'SERVING_TOSSED' || gameState === 'PLAYING' || gameState === 'POINT_OVER') {
+                let screenLeft = camX;
+                let screenRight = camX + canvas.width;
+                
+                if (ball.y < 0 || ball.x < screenLeft || ball.x > screenRight) {
+                    let ix = ball.x;
+                    let iy = ball.y;
+                    let pointing = '';
+                    
+                    if (ball.y < 0) { iy = 40; pointing = 'up'; }
+                    if (ball.x < screenLeft) { ix = screenLeft + 40; pointing = 'left'; }
+                    if (ball.x > screenRight) { ix = screenRight - 40; pointing = 'right'; }
+                    
+                    if (ball.x < screenLeft && ball.y < 0) { ix = screenLeft + 40; iy = 40; pointing = 'up-left'; }
+                    if (ball.x > screenRight && ball.y < 0) { ix = screenRight - 40; iy = 40; pointing = 'up-right'; }
+                    
+                    ctx.save();
+                    ctx.translate(ix, iy);
+                    ctx.fillStyle = '#ffeb3b';
+                    ctx.strokeStyle = '#1a202c';
+                    ctx.lineWidth = 2;
+                    
+                    ctx.beginPath();
+                    if (pointing.includes('up')) {
+                        ctx.moveTo(0, -15); ctx.lineTo(-12, 10); ctx.lineTo(12, 10);
+                    } else if (pointing === 'left') {
+                        ctx.moveTo(-15, 0); ctx.lineTo(10, -12); ctx.lineTo(10, 12);
+                    } else if (pointing === 'right') {
+                        ctx.moveTo(15, 0); ctx.lineTo(-10, -12); ctx.lineTo(-10, 12);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                    
+                    ctx.beginPath();
+                    if (pointing.includes('up')) {
+                        ctx.arc(0, 20, 6, 0, Math.PI*2);
+                    } else if (pointing === 'left') {
+                        ctx.arc(20, 0, 6, 0, Math.PI*2);
+                    } else if (pointing === 'right') {
+                        ctx.arc(-20, 0, 6, 0, Math.PI*2);
+                    }
+                    ctx.fillStyle = '#fff';
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            }
+
+            particles = particles.filter(p => p.life > 0);
+            particles.forEach(p => { p.update(); p.draw(ctx); });
+
+            // Fix for the cut-off code: Complete the trajectory loop and end block
+            if (gameState === 'SERVING' && tossCharge > 0 && serverPlayer) {
+                ball.draw(ctx); 
+                
+                ctx.beginPath();
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+                ctx.setLineDash([8, 8]);
+                ctx.lineWidth = 4;
+                
+                let simX = ball.x;
+                let simY = ball.y;
+                let angle = Math.PI/2 - (tossCharge * Math.PI/18); 
+                let power = 13 + (tossCharge * 5);
+                let simVx = Math.cos(angle) * power * (serverPlayer.team === 'left' ? 1 : -1);
+                let simVy = -Math.sin(angle) * power;
+                
+                ctx.moveTo(simX, simY);
+                for(let i = 0; i < 40; i++) {
+                    simX += simVx;
+                    simY += simVy;
+                    simVy += GRAVITY;
+                    ctx.lineTo(simX, simY);
+                    if (simY > GROUND_Y) break;
+                }
+                ctx.stroke();
+            }
+
+            ctx.restore();
+            
+            // Match progression logic
+            if (gameState === 'POINT_OVER') {
+                pointEndTimer++;
+                
+                if (pointReason && pointEndTimer < 60) {
+                    ctx.save();
+                    ctx.fillStyle = '#e53e3e';
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 4;
+                    ctx.font = 'bold 64px Inter';
+                    ctx.textAlign = 'center';
+                    let yPos = GROUND_Y - 300 - (pointEndTimer * 1.5);
+                    let xPos = ball.impactX || NET_X;
+                    
+                    let viewLeft = camX + 200;
+                    let viewRight = camX + canvas.width - 200;
+                    xPos = Math.max(viewLeft, Math.min(viewRight, xPos));
+                    
+                    ctx.strokeText(pointReason, xPos, yPos);
+                    ctx.fillText(pointReason, xPos, yPos);
+                    ctx.restore();
+                }
+                
+                if (pointEndTimer > 150) {
+                    if (pointWinner === 'left') scoreLeft++;
+                    else scoreRight++;
+                    
+                    updateScores();
+                    
+                    if (scoreLeft >= WIN_SCORE && scoreLeft - scoreRight >= 2) {
+                        gameState = 'MATCH_OVER';
+                        matchWinner = 'left';
+                        matchEndTimer = 0;
+                    } else if (scoreRight >= WIN_SCORE && scoreRight - scoreLeft >= 2) {
+                        gameState = 'MATCH_OVER';
+                        matchWinner = 'right';
+                        matchEndTimer = 0;
+                    } else {
+                        servingTeam = pointWinner;
+                        resetPositions();
+                        gameState = 'SERVING';
+                    }
+                }
+            } else if (gameState === 'MATCH_OVER') {
+                matchEndTimer++;
+                
+                ctx.save();
+                ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                ctx.fillRect(camX, 0, canvas.width, canvas.height);
+                
+                ctx.fillStyle = '#fff';
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 6;
+                ctx.font = 'bold 80px Inter';
+                ctx.textAlign = 'center';
+                let winnerText = matchWinner === 'left' ? 'LEFT TEAM WINS!' : 'RIGHT TEAM WINS!';
+                ctx.strokeText(winnerText, camX + canvas.width/2, canvas.height/2);
+                ctx.fillText(winnerText, camX + canvas.width/2, canvas.height/2);
+                ctx.restore();
+
+                if (matchEndTimer === 1 && gameMode === '1P' && matchWinner === 'left') {
+                    let newHitters = [p1Right.charId];
+                    let newSetters = [p2Right.charId];
+                    let unlockedAny = false;
+                    
+                    newHitters.forEach(id => { if(saveUnlock(id)) { recentlyUnlocked.push(CHARACTERS.hitters[id].name); unlockedAny = true; } });
+                    newSetters.forEach(id => { if(saveUnlock(id)) { recentlyUnlocked.push(CHARACTERS.setters[id].name); unlockedAny = true; } });
+                    
+                    if (unlockedAny) populateCharSelects();
+                }
+
+                if (recentlyUnlocked.length > 0) {
+                    ctx.save();
+                    ctx.fillStyle = '#f6e05e';
+                    ctx.strokeStyle = '#000';
+                    ctx.lineWidth = 4;
+                    ctx.font = 'bold 32px Inter';
+                    ctx.textAlign = 'center';
+                    let txt = "UNLOCKED: " + recentlyUnlocked.join(', ');
+                    ctx.strokeText(txt, camX + canvas.width/2, canvas.height/2 + 80);
+                    ctx.fillText(txt, camX + canvas.width/2, canvas.height/2 + 80);
+                    ctx.restore();
+                }
+                
+                if (matchEndTimer > 240) {
+                    gameState = 'START';
+                    showMessage('Indoor Volleyball', `${matchWinner === 'left' ? 'Left' : 'Right'} Team Won!`, 'Play Again');
+                }
+            }
+            
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Boot up game engine
+        requestAnimationFrame(gameLoop);
+    </script>
+</body>
+</html>
